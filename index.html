@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Candy Crush 3D com Objetivos e Bomba</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <style>
+        body {
+            background-color: #ffe6f0;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+            cursor: default;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+            padding: 0;
+        }
+
+        #game-container {
+            position: relative;
+            text-align: center;
+            padding: 10px;
+            width: 100%;
+            max-width: 100vw;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        #game-board {
+            display: grid;
+            grid-template-columns: repeat(8, 87.75px);
+            gap: 2.925px;
+            background-color: #ffd1e3;
+            padding: 14.625px;
+            border-radius: 14.625px;
+            box-shadow: 0 0 14.625px rgba(0, 0, 0, 0.2);
+            position: relative;
+            margin-top: 90px;
+            margin-bottom: 70px;
+        }
+
+        .tile {
+            width: 87.75px;
+            height: 87.75px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 41px;
+            border-radius: 11.7px;
+            transition: transform 0.2s ease, opacity 0.3s ease;
+            background-color: #fff0f5;
+            position: absolute;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .tile:hover {
+            transform: scale(1.05);
+        }
+
+        .tile.selected,
+        .tile.hint {
+            border: 4.39px solid #ffb6c1;
+            box-shadow: 0 0 14.625px #ffb6c1;
+            transform: translateZ(75px);
+        }
+
+        .explode {
+            animation: explode 0.4s ease forwards;
+        }
+
+        .bomb {
+            background-color: #ff69b4;
+            animation: pulse 1s infinite;
+        }
+
+        .fall {
+            transition: top 0.5s ease-out;
+        }
+
+        .swap {
+            animation: bounce 0.3s ease;
+        }
+
+        #header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 80px;
+            background-color: #ffcccb;
+            color: #4a2c31;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+        }
+
+        #player-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #player-photo {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background-color: #fffacd;
+            border: 2px solid #ff9999;
+        }
+
+        #player-name {
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        #game-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        #total-score,
+        #moves-time {
+            font-size: 18px;
+        }
+
+        #score-board {
+            display: flex;
+            gap: 10px;
+            font-size: 18px;
+        }
+
+        .goal-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .completed {
+            animation: festive 1s infinite;
+        }
+
+        #final-score {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 52.65px;
+            color: #ff69b4;
+            background: rgba(255, 240, 245, 0.9);
+            padding: 29.25px;
+            border-radius: 14.625px;
+            display: none;
+            border: 3px solid #ffb6c1;
+            z-index: 1100;
+        }
+
+        .particle {
+            position: absolute;
+            width: 14.625px;
+            height: 14.625px;
+            background-color: #ff99cc;
+            border-radius: 50%;
+            animation: particleBurst 0.5s ease forwards;
+        }
+
+        #button-bar {
+            position: fixed;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            z-index: 1000;
+            padding: 5px;
+            background: rgba(255, 204, 203, 0.8);
+            border-radius: 10px;
+        }
+
+        #shuffle-button,
+        #hint-button {
+            width: 60px;
+            height: 60px;
+            background-color: #ff99cc;
+            color: #4a2c31;
+            border: none;
+            border-radius: 50%;
+            font-size: 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+            transition: background-color 0.3s;
+            touch-action: manipulation;
+        }
+
+        #shuffle-button:hover,
+        #hint-button:hover {
+            background-color: #ff69b4;
+        }
+
+        #shuffle-button:disabled,
+        #hint-button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        @media (max-width: 768px) {
+            #game-board {
+                grid-template-columns: repeat(8, 40px);
+                gap: 1px;
+                padding: 5px;
+                margin-top: 70px;
+                margin-bottom: 60px;
+            }
+
+            .tile {
+                width: 40px;
+                height: 40px;
+                font-size: 20px;
+                border-radius: 4px;
+            }
+
+            .tile.selected,
+            .tile.hint {
+                border: 2px solid #ffb6c1;
+                box-shadow: 0 0 6px #ffb6c1;
+            }
+
+            #header {
+                height: 60px;
+                padding: 0 5px;
+            }
+
+            #player-photo {
+                width: 30px;
+                height: 30px;
+            }
+
+            #player-name {
+                font-size: 16px;
+            }
+
+            #total-score,
+            #moves-time,
+            #score-board {
+                font-size: 12px;
+            }
+
+            #game-info {
+                gap: 5px;
+            }
+
+            #final-score {
+                font-size: 28px;
+                padding: 15px;
+            }
+
+            .particle {
+                width: 8px;
+                height: 8px;
+            }
+
+            #button-bar {
+                gap: 10px;
+                padding: 3px;
+            }
+
+            #shuffle-button,
+            #hint-button {
+                width: 45px;
+                height: 45px;
+                font-size: 18px;
+            }
+        }
+
+        @keyframes explode {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+
+            50% {
+                transform: scale(1.3);
+                opacity: 0.8;
+            }
+
+            100% {
+                transform: scale(0);
+                opacity: 0;
+            }
+        }
+
+        @keyframes particleBurst {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+
+            100% {
+                transform: translate(var(--dx), var(--dy)) scale(0);
+                opacity: 0;
+            }
+        }
+
+        @keyframes bounce {
+
+            0%,
+            100% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.1);
+            }
+        }
+
+        @keyframes festive {
+
+            0%,
+            100% {
+                transform: scale(1);
+                color: #4a2c31;
+            }
+
+            50% {
+                transform: scale(1.2);
+                color: #ff69b4;
+            }
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.1);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="header" class="container-fluid">
+        <div id="player-info">
+            <div id="player-photo"></div>
+            <div id="player-name">Jogador</div>
+        </div>
+        <div id="game-info">
+            <div id="total-score">Score: 0</div>
+            <div id="moves-time">Jogadas: 60 | Tempo: 05:00</div>
+            <div id="score-board">
+                <div class="goal-item" data-goal="lollipop">🍭: <span>0/9</span></div>
+                <div class="goal-item" data-goal="cake">🍰: <span>0/12</span></div>
+                <div class="goal-item" data-goal="honey">🍯: <span>0/16</span></div>
+            </div>
+        </div>
+    </div>
+    <div id="game-container" class="container">
+        <div id="game-board" class="mx-auto"></div>
+        <div id="final-score"></div>
+        <div id="button-bar">
+            <button id="hint-button" title="Mostrar combinação (3 usos por partida)">💡</button>
+            <button id="shuffle-button" title="Reorganizar (1 uso por partida)">🔄</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+        crossorigin="anonymous"></script>
+    <script>
+        const boardSize = 8;
+        let tileSize = 87.75;
+        let gap = 2.925;
+        const candies = ['🍬', '🍭', '🍫', '🍩', '🍪', '🍰', '🧁', '🍯', '🍓', '🍒', '🍇'];
+        const goals = { '🍭': 9, '🍰': 12, '🍯': 16 };
+        let board = [];
+        let score = 0;
+        let selectedTile = null;
+        let movesLeft = 60;
+        let movesMade = 0;
+        let timeLeft = 300;
+        let collected = { '🍭': 0, '🍰': 0, '🍯': 0 };
+        let shuffleUsed = false;
+        let hintUses = 0;
+
+        const gameBoard = document.getElementById('game-board');
+        const scoreBoard = document.getElementById('score-board');
+        const movesTimeDisplay = document.getElementById('moves-time');
+        const totalScoreDisplay = document.getElementById('total-score');
+        const finalScoreDisplay = document.getElementById('final-score');
+        const shuffleButton = document.getElementById('shuffle-button');
+        const hintButton = document.getElementById('hint-button');
+
+        const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+        // Configuração de áudio
+        const soundBase = new Audio('./sond.mp3');
+        const soundGreat = new Audio('./great.mp3');
+        const soundRara = new Audio('./rara.mp3');
+        let comboCount = 0;
+        let lastScoreTime = 0;
+        const comboTimeout = 1000; // 1 segundo para considerar pontos consecutivos
+        const resetTimeout = 5000; // 5 segundos para resetar ao som base
+        let resetTimer = null;
+
+        function playScoreSound() {
+            const now = Date.now();
+            if (now - lastScoreTime < comboTimeout) {
+                comboCount++;
+            } else {
+                comboCount = 1;
+            }
+            lastScoreTime = now;
+
+            // Limpa o temporizador anterior e configura um novo para resetar após 5 segundos
+            if (resetTimer) clearTimeout(resetTimer);
+            resetTimer = setTimeout(() => {
+                comboCount = 0;
+            }, resetTimeout);
+
+            // Escolhe o som baseado no comboCount
+            let sound;
+            if (comboCount === 1) {
+                sound = soundBase.cloneNode();
+            } else if (comboCount === 2) {
+                sound = soundGreat.cloneNode();
+            } else {
+                sound = soundRara.cloneNode();
+            }
+
+            sound.volume = 0.5; // Volume ajustável (0.0 a 1.0)
+            sound.play().catch(error => console.log("Erro ao tocar som:", error));
+        }
+
+        function initializeBoard() {
+            adjustBoardSize();
+            gameBoard.style.width = `${boardSize * (tileSize + gap) + (tileSize === 40 ? 10 : 29.25)}px`;
+            gameBoard.style.height = `${boardSize * (tileSize + gap) + (tileSize === 40 ? 10 : 29.25)}px`;
+
+            for (let i = 0; i < boardSize; i++) {
+                board[i] = [];
+                for (let j = 0; j < boardSize; j++) {
+                    board[i][j] = candies[Math.floor(Math.random() * candies.length)];
+                    createTile(i, j);
+                }
+            }
+            updatePositions();
+            checkMatches();
+            startTimer();
+            startMoveCheck();
+
+            shuffleButton.addEventListener('click', shuffleBoard);
+            hintButton.addEventListener('click', showHint);
+
+            if (isMobile) {
+                gameBoard.addEventListener('touchstart', handleTileTouch, { passive: false });
+            } else {
+                gameBoard.addEventListener('click', handleTileClick);
+            }
+        }
+
+        function adjustBoardSize() {
+            if (window.innerWidth <= 768) {
+                tileSize = 40;
+                gap = 1;
+            } else {
+                tileSize = 87.75;
+                gap = 2.925;
+            }
+            gameBoard.style.width = `${boardSize * (tileSize + gap) + (tileSize === 40 ? 10 : 29.25)}px`;
+            gameBoard.style.height = `${boardSize * (tileSize + gap) + (tileSize === 40 ? 10 : 29.25)}px`;
+        }
+
+        function createTile(row, col, isBomb = false) {
+            const existingTile = document.querySelector(`.tile[data-row="${row}"][data-col="${col}"]`);
+            if (existingTile) existingTile.remove();
+
+            const tile = document.createElement('div');
+            tile.classList.add('tile');
+            tile.dataset.row = row;
+            tile.dataset.col = col;
+            tile.style.left = `${col * (tileSize + gap) + (tileSize === 40 ? 5 : 14.625)}px`;
+            tile.style.top = `${row * (tileSize + gap) + (tileSize === 40 ? 5 : 14.625)}px`;
+
+            if (isBomb) {
+                tile.classList.add('bomb');
+                tile.textContent = '💣';
+                tile.addEventListener('dblclick', () => explodeBomb(row, col));
+                setTimeout(() => autoExplodeBomb(row, col), 5000);
+            } else {
+                tile.textContent = board[row][col];
+            }
+
+            gameBoard.appendChild(tile);
+        }
+
+        function handleTileClick(e) {
+            if (movesLeft <= 0 || timeLeft <= 0) return;
+
+            const tile = e.target.closest('.tile');
+            if (!tile || tile.classList.contains('bomb')) return;
+
+            const row = parseInt(tile.dataset.row);
+            const col = parseInt(tile.dataset.col);
+            handleTileSelection(row, col, tile);
+        }
+
+        function handleTileTouch(e) {
+            if (movesLeft <= 0 || timeLeft <= 0) return;
+
+            const touch = e.touches[0];
+            const tile = document.elementFromPoint(touch.clientX, touch.clientY);
+            if (!tile || !tile.classList.contains('tile') || tile.classList.contains('bomb')) return;
+
+            e.preventDefault();
+            const row = parseInt(tile.dataset.row);
+            const col = parseInt(tile.dataset.col);
+            handleTileSelection(row, col, tile);
+        }
+
+        function handleTileSelection(row, col, tile) {
+            if (!selectedTile) {
+                selectedTile = { row, col, element: tile };
+                tile.classList.add('selected');
+            } else {
+                const prevRow = selectedTile.row;
+                const prevCol = selectedTile.col;
+
+                if (Math.abs(prevRow - row) + Math.abs(prevCol - col) === 1) {
+                    selectedTile.element.classList.remove('selected');
+                    swapTiles(prevRow, prevCol, row, col);
+                    selectedTile = null;
+                } else {
+                    selectedTile.element.classList.remove('selected');
+                    selectedTile = null;
+                }
+            }
+        }
+
+        function showHint() {
+            if (hintUses >= 3 || movesLeft <= 0 || timeLeft <= 0) return;
+
+            const move = findPossibleMove();
+            if (move) {
+                const [row1, col1, row2, col2] = move;
+                const tile1 = document.querySelector(`.tile[data-row="${row1}"][data-col="${col1}"]`);
+                const tile2 = document.querySelector(`.tile[data-row="${row2}"][data-col="${col2}"]`);
+
+                tile1.classList.add('hint');
+                tile2.classList.add('hint');
+                setTimeout(() => {
+                    tile1.classList.remove('hint');
+                    tile2.classList.remove('hint');
+                }, 2000);
+
+                hintUses++;
+                if (hintUses >= 3) hintButton.disabled = true;
+            }
+        }
+
+        function findPossibleMove() {
+            for (let i = 0; i < boardSize; i++) {
+                for (let j = 0; j < boardSize; j++) {
+                    if (board[i][j]) {
+                        const directions = [[0, 1], [1, 0], [0, -1], [-1, 0]];
+                        for (let [di, dj] of directions) {
+                            const ni = i + di;
+                            const nj = j + dj;
+                            if (ni >= 0 && ni < boardSize && nj >= 0 && nj < boardSize) {
+                                const tempBoard = JSON.parse(JSON.stringify(board));
+                                [tempBoard[i][j], tempBoard[ni][nj]] = [tempBoard[ni][nj], tempBoard[i][j]];
+                                if (checkMatchesTemporary(tempBoard)) return [i, j, ni, nj];
+                            }
+                        }
+                    }
+                }
+            }
+            return null;
+        }
+
+        function swapTiles(row1, col1, row2, col2) {
+            const tile1 = document.querySelector(`.tile[data-row="${row1}"][data-col="${col1}"]`);
+            const tile2 = document.querySelector(`.tile[data-row="${row2}"][data-col="${col2}"]`);
+            tile1.classList.add('swap');
+            tile2.classList.add('swap');
+
+            const tempBoard = JSON.parse(JSON.stringify(board));
+            const temp1 = board[row1][col1];
+            const temp2 = board[row2][col2];
+            board[row1][col1] = temp2;
+            board[row2][col2] = temp1;
+            tile1.dataset.row = row2;
+            tile1.dataset.col = col2;
+            tile2.dataset.row = row1;
+            tile2.dataset.col = col1;
+
+            updatePositions();
+
+            const hasMatch = checkMatchesTemporary(board);
+            setTimeout(() => {
+                tile1.classList.remove('swap');
+                tile2.classList.remove('swap');
+                if (hasMatch) {
+                    movesLeft--;
+                    movesMade++;
+                    updateMovesTime();
+                    checkRandomBomb();
+                    checkMatches();
+                } else {
+                    board[row1][col1] = temp1;
+                    board[row2][col2] = temp2;
+                    tile1.dataset.row = row1;
+                    tile1.dataset.col = col1;
+                    tile2.dataset.row = row2;
+                    tile2.dataset.col = col2;
+                    updatePositions();
+                    checkNoMovesLeft();
+                }
+            }, 300);
+        }
+
+        function updatePositions() {
+            const tiles = document.querySelectorAll('.tile');
+            tiles.forEach(tile => {
+                const row = parseInt(tile.dataset.row);
+                const col = parseInt(tile.dataset.col);
+                tile.style.left = `${col * (tileSize + gap) + (tileSize === 40 ? 5 : 14.625)}px`;
+                tile.style.top = `${row * (tileSize + gap) + (tileSize === 40 ? 5 : 14.625)}px`;
+                if (!tile.classList.contains('bomb')) {
+                    tile.textContent = board[row][col];
+                }
+            });
+        }
+
+        function checkMatchesTemporary(tempBoard) {
+            const visited = new Set();
+            for (let i = 0; i < boardSize; i++) {
+                for (let j = 0; j < boardSize; j++) {
+                    if (tempBoard[i][j] && !visited.has(`${i},${j}`)) {
+                        const connected = findConnected(i, j, tempBoard[i][j], tempBoard);
+                        if (connected.length >= 3) return true;
+                        connected.forEach(([r, c]) => visited.add(`${r},${c}`));
+                    }
+                }
+            }
+            return false;
+        }
+
+        function checkMatches() {
+            let matchesFound = false;
+            const visited = new Set();
+
+            for (let i = 0; i < boardSize; i++) {
+                for (let j = 0; j < boardSize; j++) {
+                    if (board[i][j] && !visited.has(`${i},${j}`)) {
+                        const connected = findConnected(i, j, board[i][j], board);
+                        if (connected.length >= 3) {
+                            matchesFound = true;
+                            if (checkLShapeFromConnected(connected)) {
+                                const center = connected[Math.floor(connected.length / 2)];
+                                createBomb(center[0], center[1]);
+                            } else {
+                                explodeConnected(connected);
+                            }
+                            connected.forEach(([r, c]) => visited.add(`${r},${c}`));
+                            if (isMobile && 'vibrate' in navigator) {
+                                navigator.vibrate(200);
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (matchesFound) {
+                setTimeout(applyGravity, 500);
+            } else {
+                checkNoMovesLeft();
+            }
+            return matchesFound;
+        }
+
+        function findConnected(row, col, candy, currentBoard = board) {
+            const connected = [];
+            const stack = [[row, col]];
+            const visited = new Set();
+
+            while (stack.length > 0) {
+                const [r, c] = stack.pop();
+                if (visited.has(`${r},${c}`) || r < 0 || r >= boardSize || c < 0 || c >= boardSize || currentBoard[r][c] !== candy) {
+                    continue;
+                }
+                visited.add(`${r},${c}`);
+                connected.push([r, c]);
+                stack.push([r - 1, c]);
+                stack.push([r + 1, c]);
+                stack.push([r, c - 1]);
+                stack.push([r, c + 1]);
+            }
+
+            return connected;
+        }
+
+        function checkLShapeFromConnected(connected) {
+            if (connected.length < 5) return false;
+            const rows = new Set(connected.map(([r, _]) => r));
+            const cols = new Set(connected.map(([_, c]) => c));
+            return (rows.size >= 3 && cols.size >= 2) || (rows.size >= 2 && cols.size >= 3);
+        }
+
+        function explodeConnected(connected) {
+            const candyType = board[connected[0][0]][connected[0][1]];
+            let count = connected.length;
+
+            connected.forEach(([r, c]) => {
+                const tile = document.querySelector(`.tile[data-row="${r}"][data-col="${c}"]`);
+                if (tile) {
+                    createParticles(r, c);
+                    tile.classList.add('explode');
+                    board[r][c] = '';
+                    setTimeout(() => tile.remove(), 400);
+                }
+            });
+
+            if (candyType in collected) {
+                collected[candyType] += count;
+                updateScoreBoard();
+            }
+            score += count * 10;
+            updateTotalScore();
+            playScoreSound(); // Toca o som ao fazer pontos
+        }
+
+        function createBomb(row, col) {
+            board[row][col] = '';
+            const existingTile = document.querySelector(`.tile[data-row="${row}"][data-col="${col}"]`);
+            if (existingTile) existingTile.remove();
+            createTile(row, col, true);
+            updatePositions();
+        }
+
+        function checkRandomBomb() {
+            if (movesMade % 10 === 0 && movesMade > 0) {
+                let row, col;
+                do {
+                    row = Math.floor(Math.random() * boardSize);
+                    col = Math.floor(Math.random() * boardSize);
+                } while (document.querySelector(`.tile[data-row="${row}"][data-col="${col}"]`)?.classList.contains('bomb'));
+                createBomb(row, col);
+            }
+        }
+
+        function explodeBomb(row, col) {
+            const tile = document.querySelector(`.tile[data-row="${row}"][data-col="${col}"]`);
+            if (!tile || !tile.classList.contains('bomb') || movesLeft <= 0 || timeLeft <= 0) return;
+
+            tile.classList.add('explode');
+            setTimeout(() => tile.remove(), 400);
+            board[row][col] = '';
+
+            const directions = [
+                [-1, -1], [-1, 0], [-1, 1],
+                [0, -1], [0, 1],
+                [1, -1], [1, 0], [1, 1]
+            ];
+
+            directions.forEach(([dr, dc]) => {
+                const newRow = row + dr;
+                const newCol = col + dc;
+                if (newRow >= 0 && newRow < boardSize && newCol >= 0 && newCol < boardSize && board[newRow][newCol] !== '') {
+                    const surroundingTile = document.querySelector(`.tile[data-row="${newRow}"][data-col="${newCol}"]`);
+                    if (surroundingTile) {
+                        createParticles(newRow, newCol);
+                        surroundingTile.classList.add('explode');
+                        if (board[newRow][newCol] in collected) {
+                            collected[board[newRow][newCol]]++;
+                            updateScoreBoard();
+                        }
+                        board[newRow][newCol] = '';
+                        setTimeout(() => surroundingTile.remove(), 400);
+                        score += 10;
+                        updateTotalScore();
+                        playScoreSound(); // Toca o som ao explodir a bomba
+                    }
+                }
+            });
+
+            setTimeout(applyGravity, 500);
+        }
+
+        function autoExplodeBomb(row, col) {
+            const tile = document.querySelector(`.tile[data-row="${row}"][data-col="${col}"]`);
+            if (tile && tile.classList.contains('bomb')) {
+                explodeBomb(row, col);
+            }
+        }
+
+        function createParticles(row, col) {
+            const tileX = col * (tileSize + gap) + (tileSize === 40 ? 5 : 14.625) + tileSize / 2;
+            const tileY = row * (tileSize + gap) + (tileSize === 40 ? 5 : 14.625) + tileSize / 2;
+            for (let i = 0; i < 6; i++) {
+                const particle = document.createElement('div');
+                particle.classList.add('particle');
+                particle.style.left = `${tileX}px`;
+                particle.style.top = `${tileY}px`;
+                const angle = Math.random() * 2 * Math.PI;
+                const distance = Math.random() * (tileSize === 40 ? 40 : 73.125) + (tileSize === 40 ? 15 : 29.25);
+                particle.style.setProperty('--dx', `${Math.cos(angle) * distance}px`);
+                particle.style.setProperty('--dy', `${Math.sin(angle) * distance}px`);
+                gameBoard.appendChild(particle);
+                setTimeout(() => particle.remove(), 500);
+            }
+        }
+
+        function applyGravity() {
+            for (let j = 0; j < boardSize; j++) {
+                let emptySpaces = 0;
+                for (let i = boardSize - 1; i >= 0; i--) {
+                    if (board[i][j] === '') {
+                        emptySpaces++;
+                    } else if (emptySpaces > 0) {
+                        board[i + emptySpaces][j] = board[i][j];
+                        board[i][j] = '';
+                        const tile = document.querySelector(`.tile[data-row="${i}"][data-col="${j}"]`);
+                        tile.dataset.row = i + emptySpaces;
+                        tile.classList.add('fall');
+                    }
+                }
+                for (let i = 0; i < emptySpaces; i++) {
+                    board[i][j] = candies[Math.floor(Math.random() * candies.length)];
+                    createTile(i, j);
+                    const tile = document.querySelector(`.tile[data-row="${i}"][data-col="${j}"]`);
+                    tile.style.top = `${-tileSize}px`;
+                    tile.classList.add('fall');
+                }
+            }
+            updatePositions();
+            setTimeout(checkMatches, 600);
+        }
+
+        function shuffleBoard() {
+            if (shuffleUsed || movesLeft <= 0 || timeLeft <= 0) return;
+
+            shuffleUsed = true;
+            shuffleButton.disabled = true;
+
+            const tiles = document.querySelectorAll('.tile');
+            tiles.forEach(tile => tile.remove());
+
+            for (let i = 0; i < boardSize; i++) {
+                for (let j = 0; j < boardSize; j++) {
+                    board[i][j] = candies[Math.floor(Math.random() * candies.length)];
+                    createTile(i, j);
+                }
+            }
+
+            updatePositions();
+            checkMatches();
+        }
+
+        function checkNoMovesLeft() {
+            if (movesLeft <= 0 || timeLeft <= 0) return;
+
+            const hasMoves = checkPossibleMoves();
+            if (!hasMoves && shuffleUsed) {
+                endGame();
+            }
+        }
+
+        function checkPossibleMoves() {
+            for (let i = 0; i < boardSize; i++) {
+                for (let j = 0; j < boardSize; j++) {
+                    if (board[i][j]) {
+                        const directions = [[0, 1], [1, 0], [0, -1], [-1, 0]];
+                        for (let [di, dj] of directions) {
+                            const ni = i + di;
+                            const nj = j + dj;
+                            if (ni >= 0 && ni < boardSize && nj >= 0 && nj < boardSize) {
+                                const tempBoard = JSON.parse(JSON.stringify(board));
+                                [tempBoard[i][j], tempBoard[ni][nj]] = [tempBoard[ni][nj], tempBoard[i][j]];
+                                if (checkMatchesTemporary(tempBoard)) return true;
+                            }
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
+        function startMoveCheck() {
+            setInterval(() => {
+                if (movesLeft > 0 && timeLeft > 0) {
+                    checkNoMovesLeft();
+                }
+            }, 3000);
+        }
+
+        function updateScoreBoard() {
+            Object.keys(goals).forEach(candy => {
+                const item = scoreBoard.querySelector(`[data-goal="${candy === '🍭' ? 'lollipop' : candy === '🍰' ? 'cake' : 'honey'}"] span`);
+                item.textContent = `${collected[candy]}/${goals[candy]}`;
+                if (collected[candy] >= goals[candy] && !item.parentElement.classList.contains('completed')) {
+                    item.parentElement.classList.add('completed');
+                }
+            });
+        }
+
+        function updateTotalScore() {
+            totalScoreDisplay.textContent = `Score: ${score}`;
+        }
+
+        function updateMovesTime() {
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            movesTimeDisplay.textContent = `Jogadas: ${movesLeft} | Tempo: ${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        function startTimer() {
+            setInterval(() => {
+                if (timeLeft > 0) {
+                    timeLeft--;
+                    updateMovesTime();
+                    checkGameEnd();
+                }
+            }, 1000);
+        }
+
+        function checkGameEnd() {
+            const allGoalsMet = Object.keys(goals).every(candy => collected[candy] >= goals[candy]);
+            if (allGoalsMet || movesLeft <= 0 || timeLeft <= 0) {
+                endGame();
+            }
+        }
+
+        function endGame() {
+            const timeBonus = Math.max(0, timeLeft);
+            const movesBonus = Math.max(0, movesLeft);
+            const finalScore = score + (timeBonus * 10) + (movesBonus * 50);
+            finalScoreDisplay.textContent = allGoalsMet ? `Vitória! Pontuação Final: ${finalScore}` : `Fim de Jogo! Pontuação: ${finalScore}`;
+            finalScoreDisplay.style.display = 'block';
+            gameBoard.style.pointerEvents = 'none';
+            shuffleButton.disabled = true;
+            hintButton.disabled = true;
+        }
+
+        initializeBoard();
+
+        window.addEventListener('resize', () => {
+            adjustBoardSize();
+            updatePositions();
+        });
+    </script>
+</body>
+
+</html>
