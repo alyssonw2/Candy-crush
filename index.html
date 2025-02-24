@@ -34,7 +34,7 @@
 
         #game-board {
             display: grid;
-            grid-template-columns: repeat(8, 87.75px);
+            grid-template-columns: repeat(7, 87.75px);
             gap: 2.925px;
             background-color: #ffd1e3;
             padding: 14.625px;
@@ -220,7 +220,7 @@
 
         @media (max-width: 768px) {
             #game-board {
-                grid-template-columns: repeat(8, 40px);
+                grid-template-columns: repeat(7, 40px);
                 gap: 1px;
                 padding: 5px;
                 margin-top: 70px;
@@ -385,7 +385,8 @@
         integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
         crossorigin="anonymous"></script>
     <script>
-        const boardSize = 8;
+        const rows = 9; // 5 linhas
+        const cols = 7; // 7 colunas
         let tileSize = 87.75;
         let gap = 2.925;
         const candies = ['🍬', '🍭', '🍫', '🍩', '🍪', '🍰', '🧁', '🍯', '🍓', '🍒', '🍇'];
@@ -411,7 +412,7 @@
         const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
         // Configuração de áudio
-        const soundBase = new Audio('./sond.mp3');
+        const soundBase = new Audio('./sound.mp3');
         const soundGreat = new Audio('./great.mp3');
         const soundRara = new Audio('./rara.mp3');
         let comboCount = 0;
@@ -429,13 +430,11 @@
             }
             lastScoreTime = now;
 
-            // Limpa o temporizador anterior e configura um novo para resetar após 5 segundos
             if (resetTimer) clearTimeout(resetTimer);
             resetTimer = setTimeout(() => {
                 comboCount = 0;
             }, resetTimeout);
 
-            // Escolhe o som baseado no comboCount
             let sound;
             if (comboCount === 1) {
                 sound = soundBase.cloneNode();
@@ -445,18 +444,18 @@
                 sound = soundRara.cloneNode();
             }
 
-            sound.volume = 0.5; // Volume ajustável (0.0 a 1.0)
+            sound.volume = 0.5;
             sound.play().catch(error => console.log("Erro ao tocar som:", error));
         }
 
         function initializeBoard() {
             adjustBoardSize();
-            gameBoard.style.width = `${boardSize * (tileSize + gap) + (tileSize === 40 ? 10 : 29.25)}px`;
-            gameBoard.style.height = `${boardSize * (tileSize + gap) + (tileSize === 40 ? 10 : 29.25)}px`;
+            gameBoard.style.width = `${cols * (tileSize + gap) + (tileSize === 40 ? 10 : 29.25)}px`;
+            gameBoard.style.height = `${rows * (tileSize + gap) + (tileSize === 40 ? 10 : 29.25)}px`;
 
-            for (let i = 0; i < boardSize; i++) {
+            for (let i = 0; i < rows; i++) {
                 board[i] = [];
-                for (let j = 0; j < boardSize; j++) {
+                for (let j = 0; j < cols; j++) {
                     board[i][j] = candies[Math.floor(Math.random() * candies.length)];
                     createTile(i, j);
                 }
@@ -484,8 +483,8 @@
                 tileSize = 87.75;
                 gap = 2.925;
             }
-            gameBoard.style.width = `${boardSize * (tileSize + gap) + (tileSize === 40 ? 10 : 29.25)}px`;
-            gameBoard.style.height = `${boardSize * (tileSize + gap) + (tileSize === 40 ? 10 : 29.25)}px`;
+            gameBoard.style.width = `${cols * (tileSize + gap) + (tileSize === 40 ? 10 : 29.25)}px`;
+            gameBoard.style.height = `${rows * (tileSize + gap) + (tileSize === 40 ? 10 : 29.25)}px`;
         }
 
         function createTile(row, col, isBomb = false) {
@@ -501,9 +500,14 @@
 
             if (isBomb) {
                 tile.classList.add('bomb');
+                tile.dataset.isBomb = 'true'; // Adiciona um marcador para facilitar verificação
                 tile.textContent = '💣';
                 tile.addEventListener('dblclick', () => explodeBomb(row, col));
-                setTimeout(() => autoExplodeBomb(row, col), 5000);
+                setTimeout(() => {
+                    if (document.querySelector(`.tile[data-row="${row}"][data-col="${col}"]`)) {
+                        explodeBomb(row, col);
+                    }
+                }, 5000);
             } else {
                 tile.textContent = board[row][col];
             }
@@ -576,14 +580,14 @@
         }
 
         function findPossibleMove() {
-            for (let i = 0; i < boardSize; i++) {
-                for (let j = 0; j < boardSize; j++) {
+            for (let i = 0; i < rows; i++) {
+                for (let j = 0; j < cols; j++) {
                     if (board[i][j]) {
                         const directions = [[0, 1], [1, 0], [0, -1], [-1, 0]];
                         for (let [di, dj] of directions) {
                             const ni = i + di;
                             const nj = j + dj;
-                            if (ni >= 0 && ni < boardSize && nj >= 0 && nj < boardSize) {
+                            if (ni >= 0 && ni < rows && nj >= 0 && nj < cols) {
                                 const tempBoard = JSON.parse(JSON.stringify(board));
                                 [tempBoard[i][j], tempBoard[ni][nj]] = [tempBoard[ni][nj], tempBoard[i][j]];
                                 if (checkMatchesTemporary(tempBoard)) return [i, j, ni, nj];
@@ -651,8 +655,8 @@
 
         function checkMatchesTemporary(tempBoard) {
             const visited = new Set();
-            for (let i = 0; i < boardSize; i++) {
-                for (let j = 0; j < boardSize; j++) {
+            for (let i = 0; i < rows; i++) {
+                for (let j = 0; j < cols; j++) {
                     if (tempBoard[i][j] && !visited.has(`${i},${j}`)) {
                         const connected = findConnected(i, j, tempBoard[i][j], tempBoard);
                         if (connected.length >= 3) return true;
@@ -667,8 +671,8 @@
             let matchesFound = false;
             const visited = new Set();
 
-            for (let i = 0; i < boardSize; i++) {
-                for (let j = 0; j < boardSize; j++) {
+            for (let i = 0; i < rows; i++) {
+                for (let j = 0; j < cols; j++) {
                     if (board[i][j] && !visited.has(`${i},${j}`)) {
                         const connected = findConnected(i, j, board[i][j], board);
                         if (connected.length >= 3) {
@@ -703,7 +707,7 @@
 
             while (stack.length > 0) {
                 const [r, c] = stack.pop();
-                if (visited.has(`${r},${c}`) || r < 0 || r >= boardSize || c < 0 || c >= boardSize || currentBoard[r][c] !== candy) {
+                if (visited.has(`${r},${c}`) || r < 0 || r >= rows || c < 0 || c >= cols || currentBoard[r][c] !== candy) {
                     continue;
                 }
                 visited.add(`${r},${c}`);
@@ -719,9 +723,9 @@
 
         function checkLShapeFromConnected(connected) {
             if (connected.length < 5) return false;
-            const rows = new Set(connected.map(([r, _]) => r));
-            const cols = new Set(connected.map(([_, c]) => c));
-            return (rows.size >= 3 && cols.size >= 2) || (rows.size >= 2 && cols.size >= 3);
+            const rowsSet = new Set(connected.map(([r, _]) => r));
+            const colsSet = new Set(connected.map(([_, c]) => c));
+            return (rowsSet.size >= 3 && colsSet.size >= 2) || (rowsSet.size >= 2 && colsSet.size >= 3);
         }
 
         function explodeConnected(connected) {
@@ -744,7 +748,7 @@
             }
             score += count * 10;
             updateTotalScore();
-            playScoreSound(); // Toca o som ao fazer pontos
+            playScoreSound();
         }
 
         function createBomb(row, col) {
@@ -759,16 +763,16 @@
             if (movesMade % 10 === 0 && movesMade > 0) {
                 let row, col;
                 do {
-                    row = Math.floor(Math.random() * boardSize);
-                    col = Math.floor(Math.random() * boardSize);
-                } while (document.querySelector(`.tile[data-row="${row}"][data-col="${col}"]`)?.classList.contains('bomb'));
+                    row = Math.floor(Math.random() * rows);
+                    col = Math.floor(Math.random() * cols);
+                } while (!board[row][col] || document.querySelector(`.tile[data-row="${row}"][data-col="${col}"]`)?.classList.contains('bomb'));
                 createBomb(row, col);
             }
         }
 
         function explodeBomb(row, col) {
             const tile = document.querySelector(`.tile[data-row="${row}"][data-col="${col}"]`);
-            if (!tile || !tile.classList.contains('bomb') || movesLeft <= 0 || timeLeft <= 0) return;
+            if (!tile || !tile.dataset.isBomb || movesLeft <= 0 || timeLeft <= 0) return;
 
             tile.classList.add('explode');
             setTimeout(() => tile.remove(), 400);
@@ -783,7 +787,7 @@
             directions.forEach(([dr, dc]) => {
                 const newRow = row + dr;
                 const newCol = col + dc;
-                if (newRow >= 0 && newRow < boardSize && newCol >= 0 && newCol < boardSize && board[newRow][newCol] !== '') {
+                if (newRow >= 0 && newRow < rows && newCol >= 0 && newCol < cols && board[newRow][newCol] !== '') {
                     const surroundingTile = document.querySelector(`.tile[data-row="${newRow}"][data-col="${newCol}"]`);
                     if (surroundingTile) {
                         createParticles(newRow, newCol);
@@ -796,7 +800,7 @@
                         setTimeout(() => surroundingTile.remove(), 400);
                         score += 10;
                         updateTotalScore();
-                        playScoreSound(); // Toca o som ao explodir a bomba
+                        playScoreSound();
                     }
                 }
             });
@@ -806,7 +810,7 @@
 
         function autoExplodeBomb(row, col) {
             const tile = document.querySelector(`.tile[data-row="${row}"][data-col="${col}"]`);
-            if (tile && tile.classList.contains('bomb')) {
+            if (tile && tile.dataset.isBomb) {
                 explodeBomb(row, col);
             }
         }
@@ -829,9 +833,9 @@
         }
 
         function applyGravity() {
-            for (let j = 0; j < boardSize; j++) {
+            for (let j = 0; j < cols; j++) {
                 let emptySpaces = 0;
-                for (let i = boardSize - 1; i >= 0; i--) {
+                for (let i = rows - 1; i >= 0; i--) {
                     if (board[i][j] === '') {
                         emptySpaces++;
                     } else if (emptySpaces > 0) {
@@ -863,8 +867,8 @@
             const tiles = document.querySelectorAll('.tile');
             tiles.forEach(tile => tile.remove());
 
-            for (let i = 0; i < boardSize; i++) {
-                for (let j = 0; j < boardSize; j++) {
+            for (let i = 0; i < rows; i++) {
+                for (let j = 0; j < cols; j++) {
                     board[i][j] = candies[Math.floor(Math.random() * candies.length)];
                     createTile(i, j);
                 }
@@ -884,14 +888,14 @@
         }
 
         function checkPossibleMoves() {
-            for (let i = 0; i < boardSize; i++) {
-                for (let j = 0; j < boardSize; j++) {
+            for (let i = 0; i < rows; i++) {
+                for (let j = 0; j < cols; j++) {
                     if (board[i][j]) {
                         const directions = [[0, 1], [1, 0], [0, -1], [-1, 0]];
                         for (let [di, dj] of directions) {
                             const ni = i + di;
                             const nj = j + dj;
-                            if (ni >= 0 && ni < boardSize && nj >= 0 && nj < boardSize) {
+                            if (ni >= 0 && ni < rows && nj >= 0 && nj < cols) {
                                 const tempBoard = JSON.parse(JSON.stringify(board));
                                 [tempBoard[i][j], tempBoard[ni][nj]] = [tempBoard[ni][nj], tempBoard[i][j]];
                                 if (checkMatchesTemporary(tempBoard)) return true;
